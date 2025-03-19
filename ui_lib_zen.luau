@@ -671,15 +671,19 @@ function ZenLib:CreateWindow(config)
                     ImageRectSize = Vector2.new(36, 36)
                 })
 
+                -- Create dropdown container at UI root level to avoid clipping
+                local UI = CoreGui:FindFirstChild("ZenLibUI")
+
                 local DropdownContent = CreateInstance("Frame", {
-                    Name = "Content",
-                    Parent = Dropdown,
+                    Name = "Content_" .. text,
+                    Parent = UI.Main, -- Attach to main UI instead of inside nested containers
                     BackgroundColor3 = ZenLib.Theme.SectionColor,
-                    Position = UDim2.new(0, 0, 0, 42),
-                    Size = UDim2.new(1, 0, 0, 0),
+                    BorderSizePixel = 1,
+                    BorderColor3 = ZenLib.Theme.OutlineColor,
+                    Size = UDim2.new(0, 0, 0, 0), -- Will be sized when positioning
                     Visible = false,
                     ClipsDescendants = true,
-                    ZIndex = 5
+                    ZIndex = 100 -- Very high z-index to ensure it's on top
                 })
 
                 local DropdownContentCorner = CreateInstance("UICorner", {
@@ -697,7 +701,7 @@ function ZenLib:CreateWindow(config)
                     CanvasSize = UDim2.new(0, 0, 0, 0),
                     ScrollBarThickness = 3,
                     ScrollBarImageColor3 = ZenLib.Theme.AccentColor,
-                    ZIndex = 5,
+                    ZIndex = 101,
                     AutomaticCanvasSize = Enum.AutomaticSize.Y
                 })
 
@@ -719,6 +723,28 @@ function ZenLib:CreateWindow(config)
                 local dropped = false
                 local optionButtons = {}
 
+                -- Function to position dropdown at the button's location
+                local function positionDropdown()
+                    local buttonAbsPos = DropdownButton.AbsolutePosition
+                    local buttonAbsSize = DropdownButton.AbsoluteSize
+
+                    -- Calculate whether to show above or below based on screen space
+                    local screenSize = workspace.CurrentCamera.ViewportSize
+                    local spaceBelow = screenSize.Y - (buttonAbsPos.Y + buttonAbsSize.Y)
+                    local contentHeight = math.min(#options * 27 + 10, 150)
+
+                    -- Position dropdown at button
+                    DropdownContent.Size = UDim2.new(0, buttonAbsSize.X, 0, contentHeight)
+
+                    if spaceBelow < contentHeight and buttonAbsPos.Y > contentHeight then
+                        -- Show above if there's not enough space below but enough space above
+                        DropdownContent.Position = UDim2.new(0, buttonAbsPos.X, 0, buttonAbsPos.Y - contentHeight)
+                    else
+                        -- Show below (default)
+                        DropdownContent.Position = UDim2.new(0, buttonAbsPos.X, 0, buttonAbsPos.Y + buttonAbsSize.Y)
+                    end
+                end
+
                 local function updateDropdown()
                     for _, option in ipairs(optionButtons) do
                         option:Destroy()
@@ -726,7 +752,6 @@ function ZenLib:CreateWindow(config)
                     optionButtons = {}
 
                     local optionHeight = 25
-                    local contentHeight = math.min(#options * (optionHeight + 2) + 10, 150)
 
                     for i, option in ipairs(options) do
                         local OptionButton = CreateInstance("TextButton", {
@@ -738,7 +763,7 @@ function ZenLib:CreateWindow(config)
                             Text = option,
                             TextColor3 = ZenLib.Theme.TextColor,
                             TextSize = 12,
-                            ZIndex = 6
+                            ZIndex = 102
                         })
 
                         local OptionButtonCorner = CreateInstance("UICorner", {
@@ -749,10 +774,7 @@ function ZenLib:CreateWindow(config)
                         OptionButton.MouseButton1Click:Connect(function()
                             DropdownButton.Text = option
                             dropped = false
-                            DropdownContent:TweenSize(UDim2.new(1, 0, 0, 0), Enum.EasingDirection.Out,
-                                Enum.EasingStyle.Quart, 0.2, true, function()
-                                    DropdownContent.Visible = false
-                                end)
+                            DropdownContent.Visible = false
 
                             TweenService:Create(DropdownIcon, TweenInfo.new(0.2), {
                                 Rotation = 0
@@ -774,32 +796,55 @@ function ZenLib:CreateWindow(config)
 
                         table.insert(optionButtons, OptionButton)
                     end
-
-                    DropdownContent.Size = UDim2.new(1, 0, 0, contentHeight)
                 end
 
                 updateDropdown()
+
+                -- Handle window resize or UI movement
+                RunService.RenderStepped:Connect(function()
+                    if dropped then
+                        positionDropdown()
+                    end
+                end)
 
                 DropdownButton.MouseButton1Click:Connect(function()
                     dropped = not dropped
 
                     if dropped then
+                        positionDropdown()
                         DropdownContent.Visible = true
-                        DropdownContent:TweenSize(UDim2.new(1, 0, 0, math.min(#options * 27 + 10, 150)),
-                            Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
 
                         TweenService:Create(DropdownIcon, TweenInfo.new(0.2), {
                             Rotation = 180
                         }):Play()
                     else
-                        DropdownContent:TweenSize(UDim2.new(1, 0, 0, 0), Enum.EasingDirection.Out,
-                            Enum.EasingStyle.Quart, 0.2, true, function()
-                                DropdownContent.Visible = false
-                            end)
-
+                        DropdownContent.Visible = false
                         TweenService:Create(DropdownIcon, TweenInfo.new(0.2), {
                             Rotation = 0
                         }):Play()
+                    end
+                end)
+
+                -- Close dropdown when clicking elsewhere
+                UserInputService.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 and dropped then
+                        local mousePos = UserInputService:GetMouseLocation()
+                        local dropdownPos = DropdownContent.AbsolutePosition
+                        local dropdownSize = DropdownContent.AbsoluteSize
+                        local buttonPos = DropdownButton.AbsolutePosition
+                        local buttonSize = DropdownButton.AbsoluteSize
+
+                        -- Check if click is outside both the dropdown and its button
+                        if not (mousePos.X >= dropdownPos.X and mousePos.X <= dropdownPos.X + dropdownSize.X and
+                            mousePos.Y >= dropdownPos.Y and mousePos.Y <= dropdownPos.Y + dropdownSize.Y) and
+                            not (mousePos.X >= buttonPos.X and mousePos.X <= buttonPos.X + buttonSize.X and mousePos.Y >=
+                                buttonPos.Y and mousePos.Y <= buttonPos.Y + buttonSize.Y) then
+                            dropped = false
+                            DropdownContent.Visible = false
+                            TweenService:Create(DropdownIcon, TweenInfo.new(0.2), {
+                                Rotation = 0
+                            }):Play()
+                        end
                     end
                 end)
 
