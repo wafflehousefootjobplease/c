@@ -1,9 +1,7 @@
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
 
 local ZenLib = {
     Toggled = true,
@@ -12,7 +10,7 @@ local ZenLib = {
         BackgroundColor = Color3.fromRGB(25, 25, 25),
         SectionColor = Color3.fromRGB(30, 30, 30),
         TextColor = Color3.fromRGB(255, 255, 255),
-        AccentColor = Color3.fromRGB(85, 170, 255),
+        AccentColor = Color3.fromRGB(215, 85, 255),
         OutlineColor = Color3.fromRGB(50, 50, 50),
         InfoColor = Color3.fromRGB(120, 120, 120)
     }
