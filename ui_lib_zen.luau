@@ -67,6 +67,15 @@ function ZenLib:CreateWindow(config)
     config.Title = config.Title or "Zen UI"
     config.Size = config.Size or UDim2.new(0, 550, 0, 400)
 
+    -- Accept custom accent color
+    local accentColor = config.AccentColor or ZenLib.Theme.AccentColor
+
+    local windowTheme = {}
+    for key, value in pairs(ZenLib.Theme) do
+        windowTheme[key] = value
+    end
+    windowTheme.AccentColor = accentColor
+
     if CoreGui:FindFirstChild("ZenLibUI") then
         CoreGui:FindFirstChild("ZenLibUI"):Destroy()
     end
@@ -207,19 +216,21 @@ function ZenLib:CreateWindow(config)
         end
     end)
 
-    local Window = {}
+    local Window = {
+        Theme = windowTheme -- Store theme in window for access by tab elements
+    }
     local Tabs = {}
 
     function Window:CreateTab(name, icon)
         local TabButton = CreateInstance("TextButton", {
             Name = name .. "Tab",
             Parent = TabList,
-            BackgroundColor3 = self.Theme and self.Theme.AccentColor or ZenLib.Theme.AccentColor,
+            BackgroundColor3 = self.Theme.AccentColor,
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 30),
             Font = Enum.Font.Gotham,
             Text = name,
-            TextColor3 = ZenLib.Theme.TextColor,
+            TextColor3 = self.Theme.TextColor,
             TextSize = 14
         })
 
@@ -249,7 +260,7 @@ function ZenLib:CreateWindow(config)
             Size = UDim2.new(1, 0, 1, 0),
             CanvasSize = UDim2.new(0, 0, 0, 0),
             ScrollBarThickness = 3,
-            ScrollBarImageColor3 = ZenLib.Theme.AccentColor,
+            ScrollBarImageColor3 = self.Theme.AccentColor,
             Visible = false,
             AutomaticCanvasSize = Enum.AutomaticSize.Y
         })
@@ -348,7 +359,7 @@ function ZenLib:CreateWindow(config)
                 local Button = CreateInstance("TextButton", {
                     Name = text .. "Button",
                     Parent = SectionContainer,
-                    BackgroundColor3 = ZenLib.Theme.AccentColor,
+                    BackgroundColor3 = Window.Theme.AccentColor,
                     Size = UDim2.new(1, 0, 0, 32),
                     Font = Enum.Font.Gotham,
                     Text = text,
@@ -365,9 +376,9 @@ function ZenLib:CreateWindow(config)
                 Button.MouseButton1Click:Connect(function()
                     callback()
 
-                    Button.BackgroundColor3 = ZenLib.Theme.SectionColor
+                    Button.BackgroundColor3 = Window.Theme.SectionColor
                     TweenService:Create(Button, TweenInfo.new(0.3), {
-                        BackgroundColor3 = ZenLib.Theme.AccentColor
+                        BackgroundColor3 = Window.Theme.AccentColor
                     }):Play()
                 end)
 
@@ -402,7 +413,7 @@ function ZenLib:CreateWindow(config)
                 local ToggleButton = CreateInstance("Frame", {
                     Name = "Button",
                     Parent = Toggle,
-                    BackgroundColor3 = default and ZenLib.Theme.AccentColor or ZenLib.Theme.SectionColor,
+                    BackgroundColor3 = default and Window.Theme.AccentColor or Window.Theme.SectionColor,
                     Position = UDim2.new(1, -40, 0.5, -10),
                     Size = UDim2.new(0, 40, 0, 20)
                 })
@@ -440,14 +451,14 @@ function ZenLib:CreateWindow(config)
 
                     if toggled then
                         TweenService:Create(ToggleButton, TweenInfo.new(0.2), {
-                            BackgroundColor3 = ZenLib.Theme.AccentColor
+                            BackgroundColor3 = Window.Theme.AccentColor
                         }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {
                             Position = UDim2.new(0.5, 0, 0.5, -8)
                         }):Play()
                     else
                         TweenService:Create(ToggleButton, TweenInfo.new(0.2), {
-                            BackgroundColor3 = ZenLib.Theme.SectionColor
+                            BackgroundColor3 = Window.Theme.SectionColor
                         }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {
                             Position = UDim2.new(0, 2, 0.5, -8)
@@ -463,14 +474,14 @@ function ZenLib:CreateWindow(config)
                         toggled = value
                         if toggled then
                             TweenService:Create(ToggleButton, TweenInfo.new(0.2), {
-                                BackgroundColor3 = ZenLib.Theme.AccentColor
+                                BackgroundColor3 = Window.Theme.AccentColor
                             }):Play()
                             TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {
                                 Position = UDim2.new(0.5, 0, 0.5, -8)
                             }):Play()
                         else
                             TweenService:Create(ToggleButton, TweenInfo.new(0.2), {
-                                BackgroundColor3 = ZenLib.Theme.SectionColor
+                                BackgroundColor3 = Window.Theme.SectionColor
                             }):Play()
                             TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {
                                 Position = UDim2.new(0, 2, 0.5, -8)
@@ -539,7 +550,7 @@ function ZenLib:CreateWindow(config)
                 local SliderFill = CreateInstance("Frame", {
                     Name = "Fill",
                     Parent = SliderBg,
-                    BackgroundColor3 = ZenLib.Theme.AccentColor,
+                    BackgroundColor3 = Window.Theme.AccentColor,
                     Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
                 })
 
@@ -692,7 +703,7 @@ function ZenLib:CreateWindow(config)
                     Size = UDim2.new(1, 0, 1, 0),
                     CanvasSize = UDim2.new(0, 0, 0, 0),
                     ScrollBarThickness = 3,
-                    ScrollBarImageColor3 = ZenLib.Theme.AccentColor,
+                    ScrollBarImageColor3 = Window.Theme.AccentColor,
                     ZIndex = 101,
                     AutomaticCanvasSize = Enum.AutomaticSize.Y
                 })
@@ -770,7 +781,7 @@ function ZenLib:CreateWindow(config)
 
                         OptionButton.MouseEnter:Connect(function()
                             TweenService:Create(OptionButton, TweenInfo.new(0.2), {
-                                BackgroundColor3 = ZenLib.Theme.AccentColor
+                                BackgroundColor3 = Window.Theme.AccentColor
                             }):Play()
                         end)
 
