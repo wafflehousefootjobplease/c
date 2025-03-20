@@ -119,12 +119,16 @@ end)
 
 ClickerLib.UIElements.RebirthButton = RebirthSection:AddButton("Rebirth Now", function()
     task.spawn(function()
-        ClickerLib:Stop()
-        task.wait(0.3)
-        ClickerLib:Rebirth()
-        task.wait(0.1)
+        local prevState = ClickerLib:GetStatus()
+        if prevState.Running then
+            ClickerLib:Stop()
+            task.wait(0.3)
+        end
 
-        if ClickerLib.UIElements.AutoClickToggle.Value then
+        ClickerLib:Rebirth()
+
+        if prevState.Running then
+            task.wait(0.1)
             ClickerLib:Start()
         end
     end)
