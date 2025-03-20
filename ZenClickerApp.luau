@@ -1,4 +1,5 @@
 local _RS = game:GetService("ReplicatedStorage")
+
 local Remotes = {
     Clicker = _RS:WaitForChild("Remotes"):WaitForChild("Clicker"),
     Rebirth = _RS:WaitForChild("Remotes"):WaitForChild("Rebirth")
@@ -32,7 +33,6 @@ local ZenLib = loadstring(_HTTP_GET(
 -- ================ CLICKER CORE FUNCTIONALITY ================
 local ClickerLib = {}
 ClickerLib.Running = false
-ClickerLib.UpdateRate = 0.4
 ClickerLib.UIElements = {}
 
 local function updateStatus()
@@ -47,6 +47,7 @@ end
 
 function ClickerLib:Rebirth()
     Remotes.Rebirth:FireServer()
+    task.wait(0.1)
 end
 
 function ClickerLib:Start()
@@ -63,7 +64,7 @@ function ClickerLib:Start()
     self.ClickLoop = task.spawn(function()
         while self.Running do
             self:Click()
-            task.wait(0.001)
+            task.wait(0.01)
         end
     end)
 
@@ -92,6 +93,26 @@ function ClickerLib:GetStatus()
         Running = self.Running
     }
 end
+
+-- Toggle auto rebirth
+function ClickerLib:SetAutoRebirth(enabled)
+    self.AutoRebirth = enabled
+
+    if enabled and not self.RebirthLoop then
+        self.RebirthLoop = task.spawn(function()
+            while self.AutoRebirth do
+                self:ProcessAutoRebirth()
+                task.wait(1)
+            end
+        end)
+    elseif not enabled and self.RebirthLoop then
+        task.cancel(self.RebirthLoop)
+        self.RebirthLoop = nil
+    end
+
+    return self
+end
+
 -- ================ END CLICKER CORE FUNCTIONALITY ================
 
 -- ================ UI CREATION ================
@@ -103,6 +124,7 @@ local Window = ZenLib:CreateWindow({
 
 local MainTab = Window:CreateTab("Main")
 local ControlsSection = MainTab:CreateSection("Controls")
+local RebirthSection = MainTab:CreateSection("Rebirth")
 local StatusSection = MainTab:CreateSection("Status")
 local InfoSection = MainTab:CreateSection("Information")
 
@@ -114,12 +136,22 @@ ClickerLib.UIElements.AutoClickToggle = ControlsSection:AddToggle("Auto Click", 
     end
 end)
 
-ClickerLib.UIElements.RebirthButton = ControlsSection:AddButton("Rebirth", function()
-    ClickerLib:Rebirth()
+ClickerLib.UIElements.RebirthButton = RebirthSection:AddButton("Rebirth Now", function()
+    task.spawn(function()
+        ClickerLib:Stop()
+        task.wait(0.3)
+        ClickerLib:Rebirth()
+        task.wait(0.1)
+
+        if ClickerLib.UIElements.AutoClickToggle.Value then
+            ClickerLib:Start()
+        end
+    end)
 end)
 
 ClickerLib.UIElements.StatusLabel = StatusSection:AddLabel("Status: Idle")
 
 InfoSection:AddLabel("Zen Clicker v1.1 by smxa")
 InfoSection:AddLabel("Press RightCtrl to toggle UI")
+
 -- ================ END UI CREATION ================
