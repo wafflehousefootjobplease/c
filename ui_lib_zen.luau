@@ -3,9 +3,10 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
+-- ================ LIBRARY SETUP ================
 local ZenLib = {
     Toggled = true,
-    Elements = {},
+    MainUI = nil,
     Theme = {
         BackgroundColor = Color3.fromRGB(25, 25, 25),
         SectionColor = Color3.fromRGB(30, 30, 30),
@@ -16,7 +17,6 @@ local ZenLib = {
     }
 }
 
--- Utility Functions
 local function CreateInstance(className, properties)
     local instance = Instance.new(className)
     for property, value in pairs(properties or {}) do
@@ -59,23 +59,25 @@ local function MakeDraggable(topbarObject, object)
         end
     end)
 end
+-- ================ END LIBRARY SETUP ================
 
+-- ================ WINDOW CREATION ================
 function ZenLib:CreateWindow(config)
     config = config or {}
     config.Title = config.Title or "Zen UI"
     config.Size = config.Size or UDim2.new(0, 550, 0, 400)
 
-    -- Remove existing GUI if exists
     if CoreGui:FindFirstChild("ZenLibUI") then
         CoreGui:FindFirstChild("ZenLibUI"):Destroy()
     end
 
-    -- Main UI Components
     local UI = CreateInstance("ScreenGui", {
         Name = "ZenLibUI",
         Parent = CoreGui,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     })
+
+    ZenLib.MainUI = UI
 
     local Main = CreateInstance("Frame", {
         Name = "Main",
@@ -187,10 +189,8 @@ function ZenLib:CreateWindow(config)
         Size = UDim2.new(1, -160, 1, -50)
     })
 
-    -- Make the UI draggable
     MakeDraggable(Topbar, Main)
 
-    -- UI Functions
     CloseButton.MouseButton1Click:Connect(function()
         UI:Destroy()
     end)
@@ -210,7 +210,6 @@ function ZenLib:CreateWindow(config)
     local Window = {}
     local Tabs = {}
 
-    -- Create Tab Function
     function Window:CreateTab(name, icon)
         local TabButton = CreateInstance("TextButton", {
             Name = name .. "Tab",
@@ -268,7 +267,6 @@ function ZenLib:CreateWindow(config)
             PaddingTop = UDim.new(0, 10)
         })
 
-        -- Tab Selection Logic
         TabButton.MouseButton1Click:Connect(function()
             for _, tab in pairs(Tabs) do
                 tab.TabButton.BackgroundTransparency = 1
@@ -292,13 +290,12 @@ function ZenLib:CreateWindow(config)
 
         table.insert(Tabs, Tab)
 
-        -- Tab Elements
         function Tab:CreateSection(title)
             local Section = CreateInstance("Frame", {
                 Name = title .. "Section",
                 Parent = TabContent,
                 BackgroundColor3 = ZenLib.Theme.SectionColor,
-                Size = UDim2.new(1, 0, 0, 36), -- Dynamic height
+                Size = UDim2.new(1, 0, 0, 36),
                 AutomaticSize = Enum.AutomaticSize.Y
             })
 
@@ -344,7 +341,6 @@ function ZenLib:CreateWindow(config)
 
             local SectionElements = {}
 
-            -- Section Elements
             function SectionElements:AddButton(text, callback)
                 callback = callback or function()
                 end
@@ -369,7 +365,6 @@ function ZenLib:CreateWindow(config)
                 Button.MouseButton1Click:Connect(function()
                     callback()
 
-                    -- Animation
                     Button.BackgroundColor3 = ZenLib.Theme.SectionColor
                     TweenService:Create(Button, TweenInfo.new(0.3), {
                         BackgroundColor3 = ZenLib.Theme.AccentColor
@@ -669,19 +664,18 @@ function ZenLib:CreateWindow(config)
                     ImageRectSize = Vector2.new(36, 36)
                 })
 
-                -- Create dropdown container at UI root level to avoid clipping
                 local UI = CoreGui:FindFirstChild("ZenLibUI")
 
                 local DropdownContent = CreateInstance("Frame", {
                     Name = "Content_" .. text,
-                    Parent = UI.Main, -- Attach to main UI instead of inside nested containers
+                    Parent = UI.Main,
                     BackgroundColor3 = ZenLib.Theme.SectionColor,
                     BorderSizePixel = 1,
                     BorderColor3 = ZenLib.Theme.OutlineColor,
                     Size = UDim2.new(0, 0, 0, 0), -- Will be sized when positioning
                     Visible = false,
                     ClipsDescendants = true,
-                    ZIndex = 100 -- Very high z-index to ensure it's on top
+                    ZIndex = 100 -- Above everything else
                 })
 
                 local DropdownContentCorner = CreateInstance("UICorner", {
@@ -717,28 +711,22 @@ function ZenLib:CreateWindow(config)
                     PaddingBottom = UDim.new(0, 5)
                 })
 
-                -- Create dropdown options
                 local dropped = false
                 local optionButtons = {}
 
-                -- Function to position dropdown at the button's location
                 local function positionDropdown()
                     local buttonAbsPos = DropdownButton.AbsolutePosition
                     local buttonAbsSize = DropdownButton.AbsoluteSize
 
-                    -- Calculate whether to show above or below based on screen space
                     local screenSize = workspace.CurrentCamera.ViewportSize
                     local spaceBelow = screenSize.Y - (buttonAbsPos.Y + buttonAbsSize.Y)
                     local contentHeight = math.min(#options * 27 + 10, 150)
 
-                    -- Position dropdown at button
                     DropdownContent.Size = UDim2.new(0, buttonAbsSize.X, 0, contentHeight)
 
                     if spaceBelow < contentHeight and buttonAbsPos.Y > contentHeight then
-                        -- Show above if there's not enough space below but enough space above
                         DropdownContent.Position = UDim2.new(0, buttonAbsPos.X, 0, buttonAbsPos.Y - contentHeight)
                     else
-                        -- Show below (default)
                         DropdownContent.Position = UDim2.new(0, buttonAbsPos.X, 0, buttonAbsPos.Y + buttonAbsSize.Y)
                     end
                 end
@@ -798,7 +786,6 @@ function ZenLib:CreateWindow(config)
 
                 updateDropdown()
 
-                -- Handle window resize or UI movement
                 RunService.RenderStepped:Connect(function()
                     if dropped then
                         positionDropdown()
@@ -823,7 +810,6 @@ function ZenLib:CreateWindow(config)
                     end
                 end)
 
-                -- Close dropdown when clicking elsewhere
                 UserInputService.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 and dropped then
                         local mousePos = UserInputService:GetMouseLocation()
@@ -950,7 +936,6 @@ function ZenLib:CreateWindow(config)
                     Parent = ColorPickerArea
                 })
 
-                -- Simplified color picker implementation
                 local ColorHSV = CreateInstance("ImageLabel", {
                     Name = "ColorHSV",
                     Parent = ColorPickerArea,
@@ -1169,15 +1154,13 @@ function ZenLib:CreateWindow(config)
     return Window
 end
 
--- Keyboard shortcuts
+-- ================ KEYBINDS SETUP ================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
         ZenLib.Toggled = not ZenLib.Toggled
 
-        for _, element in pairs(ZenLib.Elements) do
-            if element.Instance then
-                element.Instance.Visible = ZenLib.Toggled
-            end
+        if ZenLib.MainUI then
+            ZenLib.MainUI.Enabled = ZenLib.Toggled
         end
     end
 end)
