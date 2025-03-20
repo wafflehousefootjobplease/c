@@ -94,7 +94,6 @@ function ClickerLib:GetStatus()
     }
 end
 
--- Toggle auto rebirth
 function ClickerLib:SetAutoRebirth(enabled)
     self.AutoRebirth = enabled
 
