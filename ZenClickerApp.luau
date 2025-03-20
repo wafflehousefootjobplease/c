@@ -94,24 +94,6 @@ function ClickerLib:GetStatus()
     }
 end
 
-function ClickerLib:SetAutoRebirth(enabled)
-    self.AutoRebirth = enabled
-
-    if enabled and not self.RebirthLoop then
-        self.RebirthLoop = task.spawn(function()
-            while self.AutoRebirth do
-                self:ProcessAutoRebirth()
-                task.wait(1)
-            end
-        end)
-    elseif not enabled and self.RebirthLoop then
-        task.cancel(self.RebirthLoop)
-        self.RebirthLoop = nil
-    end
-
-    return self
-end
-
 -- ================ END CLICKER CORE FUNCTIONALITY ================
 
 -- ================ UI CREATION ================
