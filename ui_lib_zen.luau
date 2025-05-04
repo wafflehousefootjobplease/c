@@ -14,7 +14,32 @@ local ZenLib = {
         AccentColor = Color3.fromRGB(215, 85, 255),
         OutlineColor = Color3.fromRGB(50, 50, 50),
         InfoColor = Color3.fromRGB(120, 120, 120)
-    }
+    },
+    NotificationConfig = {
+        Position = UDim2.new(1, -20, 1, -20), -- Bottom right corner
+        Size = UDim2.new(0, 300, 0, 80), -- Default notification size
+        Gap = 10, -- Gap between notifications
+        Duration = 5, -- Default display duration in seconds
+        Types = {
+            Default = {
+                IconColor = Color3.fromRGB(255, 255, 255),
+                IconImage = "rbxassetid://6031068420"
+            },
+            Success = {
+                IconColor = Color3.fromRGB(85, 255, 127),
+                IconImage = "rbxassetid://6031068420"
+            },
+            Warning = {
+                IconColor = Color3.fromRGB(255, 255, 85),
+                IconImage = "rbxassetid://6031071053"
+            },
+            Error = {
+                IconColor = Color3.fromRGB(255, 85, 85),
+                IconImage = "rbxassetid://6031071057"
+            }
+        }
+    },
+    ActiveNotifications = {}
 }
 
 local function CreateInstance(className, properties)
@@ -60,6 +85,182 @@ local function MakeDraggable(topbarObject, object)
     end)
 end
 -- ================ END LIBRARY SETUP ================
+
+-- ================ NOTIFICATION SETUP ================
+function ZenLib:Notification(options)
+    options = options or {}
+    local title = options.Title or "Notification"
+    local message = options.Message or ""
+    local duration = options.Duration or self.NotificationConfig.Duration
+    local type = options.Type or "Default"
+
+    local typeConfig = self.NotificationConfig.Types[type] or self.NotificationConfig.Types.Default
+
+    local notifUI = CreateInstance("ScreenGui", {
+        Name = "ZenNotification_" .. tostring(tick()),
+        Parent = CoreGui,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        ResetOnSpawn = false
+    })
+
+    local notifFrame = CreateInstance("Frame", {
+        Name = "NotificationFrame",
+        Parent = notifUI,
+        BackgroundColor3 = self.Theme.BackgroundColor,
+        BorderColor3 = self.Theme.OutlineColor,
+        BorderSizePixel = 1,
+        Position = UDim2.new(1, 20, 1, 0),
+        Size = self.NotificationConfig.Size,
+        ClipsDescendants = true,
+        AnchorPoint = Vector2.new(1, 1)
+    })
+
+    local notifCorner = CreateInstance("UICorner", {
+        CornerRadius = UDim.new(0, 6),
+        Parent = notifFrame
+    })
+
+    local iconFrame = CreateInstance("Frame", {
+        Name = "IconFrame",
+        Parent = notifFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(0, 50, 1, 0)
+    })
+
+    local iconImage = CreateInstance("ImageLabel", {
+        Name = "Icon",
+        Parent = iconFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 15),
+        Size = UDim2.new(0, 30, 0, 30),
+        Image = typeConfig.IconImage,
+        ImageColor3 = typeConfig.IconColor
+    })
+
+    local titleLabel = CreateInstance("TextLabel", {
+        Name = "Title",
+        Parent = notifFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 60, 0, 10),
+        Size = UDim2.new(1, -70, 0, 20),
+        Font = Enum.Font.GothamBold,
+        Text = title,
+        TextColor3 = self.Theme.TextColor,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local messageLabel = CreateInstance("TextLabel", {
+        Name = "Message",
+        Parent = notifFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 60, 0, 30),
+        Size = UDim2.new(1, -70, 0, 40),
+        Font = Enum.Font.Gotham,
+        Text = message,
+        TextColor3 = self.Theme.InfoColor,
+        TextSize = 12,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top
+    })
+
+    local progressBar = CreateInstance("Frame", {
+        Name = "ProgressBar",
+        Parent = notifFrame,
+        BackgroundColor3 = typeConfig.IconColor,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 1, -2),
+        Size = UDim2.new(1, 0, 0, 2)
+    })
+
+    local closeButton = CreateInstance("TextButton", {
+        Name = "CloseButton",
+        Parent = notifFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -25, 0, 5),
+        Size = UDim2.new(0, 20, 0, 20),
+        Font = Enum.Font.GothamBold,
+        Text = "×",
+        TextColor3 = self.Theme.TextColor,
+        TextSize = 16
+    })
+
+    table.insert(self.ActiveNotifications, notifUI)
+
+    self:RepositionNotifications()
+
+    local inTween = TweenService:Create(notifFrame,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(1, 0, 1, 0)
+        })
+    inTween:Play()
+
+    local progressTween = TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+        Size = UDim2.new(0, 0, 0, 2)
+    })
+    progressTween:Play()
+
+    closeButton.MouseButton1Click:Connect(function()
+        self:CloseNotification(notifUI)
+    end)
+
+    task.delay(duration, function()
+        self:CloseNotification(notifUI)
+    end)
+
+    return notifUI
+end
+
+function ZenLib:CloseNotification(notifUI)
+    -- Find notification index
+    local index = table.find(self.ActiveNotifications, notifUI)
+    if not index then
+        return
+    end
+
+    -- Remove from active notifications
+    table.remove(self.ActiveNotifications, index)
+
+    -- Animate notification out
+    local notifFrame = notifUI:FindFirstChild("NotificationFrame")
+    if notifFrame then
+        local outTween = TweenService:Create(notifFrame,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(1, 20, 1, 0)
+            })
+        outTween:Play()
+        outTween.Completed:Connect(function()
+            notifUI:Destroy()
+            self:RepositionNotifications() -- Reposition remaining notifications
+        end)
+    else
+        notifUI:Destroy()
+        self:RepositionNotifications()
+    end
+end
+
+function ZenLib:RepositionNotifications()
+    local basePosition = self.NotificationConfig.Position
+    local gap = self.NotificationConfig.Gap
+
+    -- Reposition each notification from bottom to top
+    for i, notifUI in ipairs(self.ActiveNotifications) do
+        local notifFrame = notifUI:FindFirstChild("NotificationFrame")
+        if notifFrame then
+            local offsetY = (i - 1) * (notifFrame.AbsoluteSize.Y + gap)
+            local newPosition = UDim2.new(basePosition.X.Scale, basePosition.X.Offset, basePosition.Y.Scale,
+                basePosition.Y.Offset - offsetY)
+
+            local posTween = TweenService:Create(notifFrame,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                    Position = newPosition
+                })
+            posTween:Play()
+        end
+    end
+end
 
 -- ================ WINDOW CREATION ================
 function ZenLib:CreateWindow(config)
@@ -493,6 +694,129 @@ function ZenLib:CreateWindow(config)
                 }
 
                 return ToggleObj
+            end
+
+            function SectionElements:AddBind(text, default, callback)
+                default = default or Enum.KeyCode.Unknown
+                callback = callback or function()
+                end
+
+                local Bind = CreateInstance("Frame", {
+                    Name = text .. "Bind",
+                    Parent = SectionContainer,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 32)
+                })
+
+                local BindLabel = CreateInstance("TextLabel", {
+                    Name = "Label",
+                    Parent = Bind,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(1, -80, 1, 0),
+                    Font = Enum.Font.Gotham,
+                    Text = text,
+                    TextColor3 = ZenLib.Theme.TextColor,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
+
+                local BindButton = CreateInstance("TextButton", {
+                    Name = "BindButton",
+                    Parent = Bind,
+                    BackgroundColor3 = ZenLib.Theme.SectionColor,
+                    Position = UDim2.new(1, -75, 0.5, -12),
+                    Size = UDim2.new(0, 75, 0, 24),
+                    Font = Enum.Font.Gotham,
+                    Text = default ~= Enum.KeyCode.Unknown and default.Name or "...",
+                    TextColor3 = ZenLib.Theme.TextColor,
+                    TextSize = 12,
+                    AutoButtonColor = false
+                })
+
+                local BindButtonCorner = CreateInstance("UICorner", {
+                    CornerRadius = UDim.new(0, 4),
+                    Parent = BindButton
+                })
+
+                local currentBind = default
+                local listening = false
+
+                local function updateBindText()
+                    BindButton.Text = currentBind ~= Enum.KeyCode.Unknown and currentBind.Name or "..."
+                end
+
+                local inputConnection = nil
+
+                BindButton.MouseButton1Click:Connect(function()
+                    if listening then
+                        return
+                    end
+
+                    listening = true
+                    BindButton.Text = "Press any key..."
+
+                    -- Disconnect previous connection if exists
+                    if inputConnection then
+                        inputConnection:Disconnect()
+                    end
+
+                    inputConnection = UserInputService.InputBegan:Connect(
+                        function(input, gameProcessed)
+                            if gameProcessed then
+                                return
+                            end
+
+                            if input.UserInputType == Enum.UserInputType.Keyboard then
+                                currentBind = input.KeyCode
+
+                                if currentBind == Enum.KeyCode.Escape then
+                                    currentBind = Enum.KeyCode.Unknown
+                                end
+
+                                updateBindText()
+                                listening = false
+                                inputConnection:Disconnect()
+                                inputConnection = nil
+                            end
+                        end)
+                end)
+
+                -- Connect to global input for triggering the keybind
+                local bindConnection = UserInputService.InputBegan:Connect(
+                    function(input, gameProcessed)
+                        if gameProcessed then
+                            return
+                        end
+
+                        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == currentBind and
+                            currentBind ~= Enum.KeyCode.Unknown and not listening then
+                            callback()
+                        end
+                    end)
+
+                -- Clean up on destroy
+                Bind.Destroying:Connect(function()
+                    if inputConnection then
+                        inputConnection:Disconnect()
+                    end
+                    if bindConnection then
+                        bindConnection:Disconnect()
+                    end
+                end)
+
+                local bindObj = {
+                    Value = currentBind,
+                    Set = function(self, keyCode)
+                        if typeof(keyCode) == "EnumItem" and keyCode.EnumType == Enum.KeyCode then
+                            currentBind = keyCode
+                            updateBindText()
+                            self.Value = currentBind
+                        end
+                    end
+                }
+
+                return bindObj
             end
 
             function SectionElements:AddSlider(text, min, max, default, callback)
